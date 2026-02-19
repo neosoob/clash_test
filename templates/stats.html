@@ -177,12 +177,15 @@
 
           if (failDatasetIndex !== -1) {
             const metaFail = chart.getDatasetMeta(failDatasetIndex);
-            const failValues = chart.data.datasets[failDatasetIndex].data;
+            const failDataset = chart.data.datasets[failDatasetIndex];
+            const failValues = failDataset.data;
+            const rateValues = failDataset.rateValues || [];
             ctx.fillStyle = '#7f1d1d';
             metaFail.data.forEach((bar, i) => {
               const value = failValues[i];
               if (value === null || value === undefined) return;
-              ctx.fillText(String(value), bar.x + 6, bar.y);
+              const rate = Math.round(Number(rateValues[i] || 0));
+              ctx.fillText(`${value} (${rate}%)`, bar.x + 6, bar.y);
             });
           }
           ctx.restore();
@@ -260,6 +263,12 @@
             {
               label: '失败次数',
               data: failListDesc,
+              rateValues: hoursDesc.map(h => {
+                const ok = data.hourly[h]?.success || 0;
+                const fail = data.hourly[h]?.failed || 0;
+                const total = ok + fail;
+                return total > 0 ? Math.round((fail / total) * 100) : 0;
+              }),
               backgroundColor: 'rgba(220, 38, 38, 0.45)',
               borderColor: '#dc2626',
               borderWidth: 1
