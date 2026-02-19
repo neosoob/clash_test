@@ -107,8 +107,12 @@
         <canvas id="pieChart"></canvas>
       </div>
       <div class="panel">
-        <h2>按小时失败次数与连通率（%）</h2>
-        <canvas id="dailyChart"></canvas>
+        <h2>按小时失败次数（柱状图）</h2>
+        <canvas id="failBarChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>按小时连通率（折线图）</h2>
+        <canvas id="rateLineChart"></canvas>
       </div>
       <div class="panel">
         <h2>最近24小时每小时失败次数与连通率</h2>
@@ -163,13 +167,12 @@
           return;
         }
 
-        if (chartId === 'dailyChart') {
+        if (chartId === 'failBarChart') {
           const failDatasetIndex = chart.data.datasets.findIndex(ds => ds.label === '失败次数');
-          const rateDatasetIndex = chart.data.datasets.findIndex(ds => ds.label === '连通率(%)');
 
           ctx.save();
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
           ctx.font = '12px sans-serif';
 
           if (failDatasetIndex !== -1) {
@@ -179,21 +182,29 @@
             metaFail.data.forEach((bar, i) => {
               const value = failValues[i];
               if (value === null || value === undefined) return;
-              ctx.fillText(String(value), bar.x, bar.y - 4);
+              ctx.fillText(String(value), bar.x + 6, bar.y);
             });
           }
+          ctx.restore();
+          return;
+        }
 
-          if (rateDatasetIndex !== -1) {
-            const metaRate = chart.getDatasetMeta(rateDatasetIndex);
-            const rateValues = chart.data.datasets[rateDatasetIndex].data;
-            ctx.fillStyle = '#1e3a8a';
-            metaRate.data.forEach((pt, i) => {
-              const value = rateValues[i];
-              if (value === null || value === undefined) return;
-              ctx.fillText(`${value}%`, pt.x, pt.y - 8);
-            });
-          }
+        if (chartId === 'rateLineChart') {
+          const rateDatasetIndex = chart.data.datasets.findIndex(ds => ds.label === '连通率(%)');
+          if (rateDatasetIndex === -1) return;
 
+          const metaRate = chart.getDatasetMeta(rateDatasetIndex);
+          const rateValues = chart.data.datasets[rateDatasetIndex].data;
+          ctx.save();
+          ctx.fillStyle = '#1e3a8a';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.font = '12px sans-serif';
+          metaRate.data.forEach((pt, i) => {
+            const value = rateValues[i];
+            if (value === null || value === undefined) return;
+            ctx.fillText(`${value}%`, pt.x, pt.y - 8);
+          });
           ctx.restore();
         }
       }
@@ -239,40 +250,48 @@
         const total = successList[i] + failList[i];
         return total > 0 ? Number(((successList[i] / total) * 100).toFixed(2)) : 0;
       });
-      drawChart('dailyChart', {
+      drawChart('failBarChart', {
+        type: 'bar',
+        data: {
+          labels: hours,
+          datasets: [
+            {
+              label: '失败次数',
+              data: failList,
+              backgroundColor: 'rgba(220, 38, 38, 0.45)',
+              borderColor: '#dc2626',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          scales: {
+            x: { beginAtZero: true }
+          }
+        }
+      });
+
+      drawChart('rateLineChart', {
         type: 'line',
         data: {
           labels: hours,
           datasets: [
             {
-              type: 'bar',
-              label: '失败次数',
-              data: failList,
-              backgroundColor: 'rgba(220, 38, 38, 0.45)',
-              borderColor: '#dc2626',
-              borderWidth: 1,
-              yAxisID: 'y'
-            },
-            {
-              type: 'line',
               label: '连通率(%)',
               data: rateList,
               borderColor: '#2563eb',
               pointBackgroundColor: '#2563eb',
               pointRadius: 3,
-              tension: 0.25,
-              yAxisID: 'y1'
+              tension: 0.25
             }
           ]
         },
         options: {
           scales: {
-            y: { beginAtZero: true },
-            y1: {
-              position: 'right',
+            y: {
               beginAtZero: true,
-              max: 100,
-              grid: { drawOnChartArea: false }
+              max: 100
             }
           }
         }
