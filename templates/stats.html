@@ -244,8 +244,10 @@
       });
 
       const hours = Object.keys(data.hourly).sort();
+      const hoursDesc = [...hours].reverse();
       const successList = hours.map(h => data.hourly[h].success || 0);
       const failList = hours.map(h => data.hourly[h].failed || 0);
+      const failListDesc = hoursDesc.map(h => data.hourly[h].failed || 0);
       const rateList = hours.map((_, i) => {
         const total = successList[i] + failList[i];
         return total > 0 ? Math.round((successList[i] / total) * 100) : 0;
@@ -253,11 +255,11 @@
       drawChart('failBarChart', {
         type: 'bar',
         data: {
-          labels: hours,
+          labels: hoursDesc,
           datasets: [
             {
               label: '失败次数',
-              data: failList,
+              data: failListDesc,
               backgroundColor: 'rgba(220, 38, 38, 0.45)',
               borderColor: '#dc2626',
               borderWidth: 1
