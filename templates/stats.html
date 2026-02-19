@@ -65,6 +65,8 @@
       line-height: 1.45;
       background: #0b1220;
       color: #e2e8f0;
+      white-space: pre;
+      overflow-x: auto;
     }
     .span-2 { grid-column: span 2; }
     .actions { margin: 12px 0; display: flex; gap: 8px; }
@@ -125,7 +127,7 @@
       </div>
       <div class="panel span-2">
         <h2>connectivity_log.txt 内容</h2>
-        <textarea id="logContent" class="log-box" readonly></textarea>
+        <textarea id="logContent" class="log-box" readonly wrap="off"></textarea>
       </div>
     </section>
   </div>
@@ -286,7 +288,11 @@
       `).join('');
 
       const logBox = document.getElementById('logContent');
-      logBox.value = logData.content || '';
+      const filteredLog = (logData.content || '')
+        .split(/\r?\n/)
+        .filter(line => line && !line.includes('\tsuccess\t'))
+        .join('\n');
+      logBox.value = filteredLog;
       logBox.scrollTop = logBox.scrollHeight;
     }
 
