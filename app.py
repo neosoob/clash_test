@@ -1,19 +1,27 @@
 ﻿from __future__ import annotations
 
 import os
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
 from statistics import mean
 
 import requests
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
 LOG_FILE = Path("connectivity_log.txt")
 TEST_URL = "https://www.google.com/generate_204"
 TIMEOUT_SECONDS = 5
+DEFAULT_AUTO_INTERVAL_SECONDS = 30
+MIN_AUTO_INTERVAL_SECONDS = 1
+
+_auto_lock = threading.Lock()
+_auto_stop_event = threading.Event()
+_auto_thread: threading.Thread | None = None
+_auto_interval_seconds = DEFAULT_AUTO_INTERVAL_SECONDS
 
 
 def run_connectivity_test() -> tuple[str, float | None, str]:
@@ -26,6 +34,12 @@ def run_connectivity_test() -> tuple[str, float | None, str]:
         return "failed", latency_ms, f"HTTP {response.status_code}"
     except requests.RequestException as exc:
         return "failed", None, str(exc)
+
+
+def _auto_test_loop() -> None:
+    while not _auto_stop_event.wait(_auto_interval_seconds):
+        status, latency_ms, detail = run_connectivity_test()
+        append_log("auto", status, latency_ms, detail)
 
 
 def append_log(mode: str, status: str, latency_ms: float | None, detail: str) -> str:
@@ -113,6 +127,68 @@ def api_test_auto():
     )
 
 
+@app.post("/api/auto/start")
+def api_auto_start():
+    global _auto_thread, _auto_interval_seconds
+
+    payload = request.get_json(silent=True) or {}
+    interval_seconds = payload.get("interval_seconds", DEFAULT_AUTO_INTERVAL_SECONDS)
+    try:
+        interval_seconds = max(MIN_AUTO_INTERVAL_SECONDS, int(interval_seconds))
+    except (TypeError, ValueError):
+        interval_seconds = DEFAULT_AUTO_INTERVAL_SECONDS
+
+    with _auto_lock:
+        _auto_interval_seconds = interval_seconds
+        already_running = _auto_thread is not None and _auto_thread.is_alive()
+        if already_running:
+            return jsonify(
+                {
+                    "running": True,
+                    "interval_seconds": _auto_interval_seconds,
+                    "message": "auto test already running",
+                }
+            )
+
+        _auto_stop_event.clear()
+        _auto_thread = threading.Thread(target=_auto_test_loop, daemon=True)
+        _auto_thread.start()
+
+    status, latency_ms, detail = run_connectivity_test()
+    ts = append_log("auto", status, latency_ms, detail)
+    return jsonify(
+        {
+            "running": True,
+            "interval_seconds": _auto_interval_seconds,
+            "last_result": {
+                "timestamp": ts,
+                "mode": "auto",
+                "status": status,
+                "latency_ms": round(latency_ms, 2) if latency_ms is not None else None,
+                "detail": detail,
+            },
+        }
+    )
+
+
+@app.post("/api/auto/stop")
+def api_auto_stop():
+    global _auto_thread
+
+    with _auto_lock:
+        was_running = _auto_thread is not None and _auto_thread.is_alive()
+        _auto_stop_event.set()
+        _auto_thread = None
+
+    return jsonify({"running": False, "stopped": was_running})
+
+
+@app.get("/api/auto/status")
+def api_auto_status():
+    running = _auto_thread is not None and _auto_thread.is_alive()
+    return jsonify({"running": running, "interval_seconds": _auto_interval_seconds})
+
+
 @app.get("/stats")
 def stats_page():
     return render_template("stats.html")
@@ -131,16 +207,11 @@ def api_stats():
     avg_latency = round(mean(latency_values), 2) if latency_values else None
 
     by_day: dict[str, dict[str, int]] = {}
-    by_mode: dict[str, int] = {"manual": 0, "auto": 0}
-
     for row in rows:
         day = row["timestamp"].split(" ")[0]
         if day not in by_day:
             by_day[day] = {"success": 0, "failed": 0}
         by_day[day][row["status"]] += 1
-
-        mode = row["mode"] if row["mode"] in by_mode else "manual"
-        by_mode[mode] += 1
 
     last_50 = rows[-50:]
 
@@ -153,7 +224,6 @@ def api_stats():
                 "success_rate": success_rate,
                 "avg_latency_ms": avg_latency,
             },
-            "mode_count": by_mode,
             "daily": by_day,
             "recent": last_50,
         }

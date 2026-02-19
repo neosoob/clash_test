@@ -86,10 +86,6 @@
         <canvas id="pieChart"></canvas>
       </div>
       <div class="panel">
-        <h2>手动/自动测试次数</h2>
-        <canvas id="modeChart"></canvas>
-      </div>
-      <div class="panel">
         <h2>按日期成功与失败</h2>
         <canvas id="dailyChart"></canvas>
       </div>
@@ -127,15 +123,6 @@
           labels: ['成功', '失败'],
           datasets: [{ data: [s.success, s.failed], backgroundColor: ['#10b981', '#ef4444'] }]
         }
-      });
-
-      drawChart('modeChart', {
-        type: 'bar',
-        data: {
-          labels: ['手动', '自动'],
-          datasets: [{ label: '次数', data: [data.mode_count.manual, data.mode_count.auto], backgroundColor: ['#0ea5e9', '#f59e0b'] }]
-        },
-        options: { scales: { y: { beginAtZero: true } } }
       });
 
       const days = Object.keys(data.daily).sort();
