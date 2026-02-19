@@ -3,7 +3,7 @@
 import os
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import mean
 
@@ -225,6 +225,36 @@ def api_stats():
             by_hour[hour] = {"success": 0, "failed": 0}
         by_hour[hour][row["status"]] += 1
 
+    current_hour = datetime.now().replace(minute=0, second=0, microsecond=0)
+    window_start = current_hour - timedelta(hours=23)
+    by_hour_24: dict[str, dict[str, int]] = {}
+    for i in range(24):
+        hour_key = (window_start + timedelta(hours=i)).strftime("%Y-%m-%d %H")
+        by_hour_24[hour_key] = {"success": 0, "failed": 0}
+
+    for row in rows:
+        try:
+            ts = datetime.strptime(row["timestamp"], "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+        ts_hour = ts.replace(minute=0, second=0, microsecond=0)
+        if ts_hour < window_start or ts_hour > current_hour:
+            continue
+        hour_key = ts_hour.strftime("%Y-%m-%d %H")
+        by_hour_24[hour_key][row["status"]] += 1
+
+    hourly_24: list[dict] = []
+    for hour_key, counts in by_hour_24.items():
+        hour_total = counts["success"] + counts["failed"]
+        rate = round((counts["success"] / hour_total) * 100, 2) if hour_total else 0.0
+        hourly_24.append(
+            {
+                "hour": hour_key,
+                "failed": counts["failed"],
+                "connectivity_rate": rate,
+            }
+        )
+
     return jsonify(
         {
             "summary": {
@@ -235,8 +265,16 @@ def api_stats():
                 "avg_latency_ms": avg_latency,
             },
             "hourly": by_hour,
+            "hourly_24": hourly_24,
         }
     )
+
+
+@app.get("/api/log")
+def api_log():
+    if not LOG_FILE.exists():
+        return jsonify({"content": ""})
+    return jsonify({"content": LOG_FILE.read_text(encoding="utf-8")})
 
 
 if __name__ == "__main__":

@@ -49,6 +49,24 @@
       min-height: 280px;
     }
     .panel h2 { margin: 0 0 8px; font-size: 15px; }
+    .table-wrap { max-height: 300px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
+    .log-box {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      background: #0b1220;
+      color: #e2e8f0;
+    }
+    .span-2 { grid-column: span 2; }
     .actions { margin: 12px 0; display: flex; gap: 8px; }
     button {
       border: none;
@@ -62,6 +80,7 @@
     @media (max-width: 920px) {
       .row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .charts { grid-template-columns: 1fr; }
+      .span-2 { grid-column: span 1; }
     }
   </style>
 </head>
@@ -88,6 +107,25 @@
       <div class="panel">
         <h2>按小时失败次数与连通率（%）</h2>
         <canvas id="dailyChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>最近24小时每小时失败次数与连通率</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>小时</th>
+                <th>失败次数</th>
+                <th>连通率</th>
+              </tr>
+            </thead>
+            <tbody id="hourly24Body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel span-2">
+        <h2>connectivity_log.txt 内容</h2>
+        <textarea id="logContent" class="log-box" readonly></textarea>
       </div>
     </section>
   </div>
@@ -171,8 +209,12 @@
     }
 
     async function loadStats() {
-      const resp = await fetch('/api/stats');
-      const data = await resp.json();
+      const [statsResp, logResp] = await Promise.all([
+        fetch('/api/stats'),
+        fetch('/api/log')
+      ]);
+      const data = await statsResp.json();
+      const logData = await logResp.json();
       const s = data.summary;
 
       document.getElementById('total').textContent = s.total;
@@ -233,6 +275,19 @@
           }
         }
       });
+
+      const tbody = document.getElementById('hourly24Body');
+      tbody.innerHTML = data.hourly_24.map(item => `
+        <tr>
+          <td>${item.hour}:00</td>
+          <td>${item.failed}</td>
+          <td>${item.connectivity_rate}%</td>
+        </tr>
+      `).join('');
+
+      const logBox = document.getElementById('logContent');
+      logBox.value = logData.content || '';
+      logBox.scrollTop = logBox.scrollHeight;
     }
 
     loadStats();
