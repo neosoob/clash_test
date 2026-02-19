@@ -103,10 +103,6 @@
 
     <section class="charts">
       <div class="panel">
-        <h2>成功/失败占比</h2>
-        <canvas id="pieChart"></canvas>
-      </div>
-      <div class="panel">
         <h2>按小时失败次数（柱状图）</h2>
         <canvas id="failBarChart"></canvas>
       </div>
@@ -128,6 +124,10 @@
             <tbody id="hourly24Body"></tbody>
           </table>
         </div>
+      </div>
+      <div class="panel">
+        <h2>成功/失败占比</h2>
+        <canvas id="pieChart"></canvas>
       </div>
       <div class="panel span-2">
         <h2>connectivity_log.txt 内容</h2>
@@ -248,7 +248,7 @@
       const failList = hours.map(h => data.hourly[h].failed || 0);
       const rateList = hours.map((_, i) => {
         const total = successList[i] + failList[i];
-        return total > 0 ? Number(((successList[i] / total) * 100).toFixed(2)) : 0;
+        return total > 0 ? Math.round((successList[i] / total) * 100) : 0;
       });
       drawChart('failBarChart', {
         type: 'bar',
