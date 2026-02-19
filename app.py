@@ -213,8 +213,6 @@ def api_stats():
             by_hour[hour] = {"success": 0, "failed": 0}
         by_hour[hour][row["status"]] += 1
 
-    last_50 = rows[-50:]
-
     return jsonify(
         {
             "summary": {
@@ -225,7 +223,6 @@ def api_stats():
                 "avg_latency_ms": avg_latency,
             },
             "hourly": by_hour,
-            "recent": last_50,
         }
     )
 

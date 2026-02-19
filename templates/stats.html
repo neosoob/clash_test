@@ -89,10 +89,6 @@
         <h2>按小时成功与失败</h2>
         <canvas id="dailyChart"></canvas>
       </div>
-      <div class="panel">
-        <h2>最近 50 次延迟趋势</h2>
-        <canvas id="latencyChart"></canvas>
-      </div>
     </section>
   </div>
 
@@ -136,22 +132,6 @@
             { label: '成功', data: successList, borderColor: '#059669', tension: 0.25 },
             { label: '失败', data: failList, borderColor: '#dc2626', tension: 0.25 }
           ]
-        },
-        options: { scales: { y: { beginAtZero: true } } }
-      });
-
-      const recent = data.recent;
-      drawChart('latencyChart', {
-        type: 'line',
-        data: {
-          labels: recent.map(x => x.timestamp.substring(11)),
-          datasets: [{
-            label: '延迟(ms)',
-            data: recent.map(x => x.latency_ms),
-            borderColor: '#7c3aed',
-            tension: 0.2,
-            spanGaps: true
-          }]
         },
         options: { scales: { y: { beginAtZero: true } } }
       });
