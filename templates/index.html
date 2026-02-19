@@ -1,0 +1,151 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>谷歌连通性测试</title>
+  <style>
+    :root {
+      --bg: #f3f8ff;
+      --card: #ffffff;
+      --accent: #0e7490;
+      --text: #0b1220;
+      --muted: #526177;
+      --ok: #0f766e;
+      --fail: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 10% 0%, #dbeafe 0, var(--bg) 40%), var(--bg);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+    .card {
+      width: min(760px, 100%);
+      background: var(--card);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12);
+    }
+    h1 { margin: 0 0 14px; font-size: 28px; }
+    p { margin: 0 0 16px; color: var(--muted); }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    input {
+      border: 1px solid #d4d7dd;
+      border-radius: 10px;
+      padding: 10px 12px;
+      width: 170px;
+      font-size: 15px;
+    }
+    button {
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button.secondary { background: #334155; }
+    button.link { background: #64748b; }
+    .result {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 120px;
+      background: #f8fafc;
+      overflow: auto;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .ok { color: var(--ok); }
+    .fail { color: var(--fail); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>谷歌连通性测试</h1>
+    <p>支持手动测试与自动定时测试，结果会写入本地 <code>connectivity_log.txt</code>。</p>
+
+    <section class="controls">
+      <button id="manualBtn">手动测试</button>
+      <input id="intervalInput" type="number" min="1" value="10" placeholder="间隔秒数" />
+      <button id="autoStartBtn">开始自动测试</button>
+      <button id="autoStopBtn" class="secondary">停止自动测试</button>
+      <button id="statsBtn" class="link">查看统计页</button>
+    </section>
+
+    <section id="result" class="result">等待测试...</section>
+  </main>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    const intervalInput = document.getElementById('intervalInput');
+    let timer = null;
+
+    function lineClass(status) {
+      return status === 'success' ? 'ok' : 'fail';
+    }
+
+    function appendLine(data) {
+      const latency = data.latency_ms === null ? '-' : `${data.latency_ms} ms`;
+      const html = `<div class="${lineClass(data.status)}">[${data.timestamp}] [${data.mode}] ${data.status} | latency=${latency} | ${data.detail}</div>`;
+      resultEl.innerHTML = html + resultEl.innerHTML;
+    }
+
+    async function sendTest(url) {
+      try {
+        const resp = await fetch(url, { method: 'POST' });
+        const data = await resp.json();
+        appendLine(data);
+      } catch (err) {
+        appendLine({
+          timestamp: new Date().toLocaleString(),
+          mode: 'client',
+          status: 'failed',
+          latency_ms: null,
+          detail: String(err)
+        });
+      }
+    }
+
+    document.getElementById('manualBtn').addEventListener('click', () => {
+      sendTest('/api/test');
+    });
+
+    document.getElementById('autoStartBtn').addEventListener('click', () => {
+      const sec = Number(intervalInput.value);
+      if (!Number.isFinite(sec) || sec < 1) {
+        alert('请输入大于等于 1 的秒数');
+        return;
+      }
+      if (timer) clearInterval(timer);
+      sendTest('/api/test/auto');
+      timer = setInterval(() => sendTest('/api/test/auto'), sec * 1000);
+    });
+
+    document.getElementById('autoStopBtn').addEventListener('click', () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    });
+
+    document.getElementById('statsBtn').addEventListener('click', () => {
+      window.location.href = '/stats';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>连通性统计</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", sans-serif;
+      color: var(--text);
+      background: linear-gradient(120deg, #e2e8f0, #f8fafc);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    .row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .stat {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 8px 24px rgba(2, 6, 23, .08);
+    }
+    .stat h3 { margin: 0; font-size: 13px; color: var(--muted); }
+    .stat p { margin: 8px 0 0; font-size: 22px; font-weight: 700; }
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .panel {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 8px 24px rgba(2, 6, 23, .08);
+      min-height: 280px;
+    }
+    .panel h2 { margin: 0 0 8px; font-size: 15px; }
+    .actions { margin: 12px 0; display: flex; gap: 8px; }
+    button {
+      border: none;
+      background: #0f766e;
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    button.alt { background: #334155; }
+    @media (max-width: 920px) {
+      .row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .charts { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>连通性统计图表</h1>
+    <div class="actions">
+      <button onclick="loadStats()">刷新数据</button>
+      <button class="alt" onclick="location.href='/'">返回测试页</button>
+    </div>
+
+    <section class="row">
+      <div class="stat"><h3>总测试次数</h3><p id="total">0</p></div>
+      <div class="stat"><h3>成功次数</h3><p id="success">0</p></div>
+      <div class="stat"><h3>失败次数</h3><p id="failed">0</p></div>
+      <div class="stat"><h3>成功率 / 平均延迟</h3><p id="rate">0% / -</p></div>
+    </section>
+
+    <section class="charts">
+      <div class="panel">
+        <h2>成功/失败占比</h2>
+        <canvas id="pieChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>手动/自动测试次数</h2>
+        <canvas id="modeChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>按日期成功与失败</h2>
+        <canvas id="dailyChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>最近 50 次延迟趋势</h2>
+        <canvas id="latencyChart"></canvas>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const chartInstances = {};
+
+    function drawChart(id, config) {
+      if (chartInstances[id]) {
+        chartInstances[id].destroy();
+      }
+      const ctx = document.getElementById(id);
+      chartInstances[id] = new Chart(ctx, config);
+    }
+
+    async function loadStats() {
+      const resp = await fetch('/api/stats');
+      const data = await resp.json();
+      const s = data.summary;
+
+      document.getElementById('total').textContent = s.total;
+      document.getElementById('success').textContent = s.success;
+      document.getElementById('failed').textContent = s.failed;
+      document.getElementById('rate').textContent = `${s.success_rate}% / ${s.avg_latency_ms ?? '-'} ms`;
+
+      drawChart('pieChart', {
+        type: 'pie',
+        data: {
+          labels: ['成功', '失败'],
+          datasets: [{ data: [s.success, s.failed], backgroundColor: ['#10b981', '#ef4444'] }]
+        }
+      });
+
+      drawChart('modeChart', {
+        type: 'bar',
+        data: {
+          labels: ['手动', '自动'],
+          datasets: [{ label: '次数', data: [data.mode_count.manual, data.mode_count.auto], backgroundColor: ['#0ea5e9', '#f59e0b'] }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+      });
+
+      const days = Object.keys(data.daily).sort();
+      const successList = days.map(d => data.daily[d].success || 0);
+      const failList = days.map(d => data.daily[d].failed || 0);
+      drawChart('dailyChart', {
+        type: 'line',
+        data: {
+          labels: days,
+          datasets: [
+            { label: '成功', data: successList, borderColor: '#059669', tension: 0.25 },
+            { label: '失败', data: failList, borderColor: '#dc2626', tension: 0.25 }
+          ]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+      });
+
+      const recent = data.recent;
+      drawChart('latencyChart', {
+        type: 'line',
+        data: {
+          labels: recent.map(x => x.timestamp.substring(11)),
+          datasets: [{
+            label: '延迟(ms)',
+            data: recent.map(x => x.latency_ms),
+            borderColor: '#7c3aed',
+            tension: 0.2,
+            spanGaps: true
+          }]
+        },
+        options: { scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    loadStats();
+  </script>
+</body>
+</html>
