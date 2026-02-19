@@ -277,7 +277,7 @@
       });
 
       const tbody = document.getElementById('hourly24Body');
-      tbody.innerHTML = data.hourly_24.map(item => `
+      tbody.innerHTML = [...data.hourly_24].reverse().map(item => `
         <tr>
           <td>${item.hour}:00</td>
           <td>${item.failed}</td>
