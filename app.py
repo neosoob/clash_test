@@ -206,12 +206,12 @@ def api_stats():
     latency_values = [r["latency_ms"] for r in rows if isinstance(r["latency_ms"], float)]
     avg_latency = round(mean(latency_values), 2) if latency_values else None
 
-    by_day: dict[str, dict[str, int]] = {}
+    by_hour: dict[str, dict[str, int]] = {}
     for row in rows:
-        day = row["timestamp"].split(" ")[0]
-        if day not in by_day:
-            by_day[day] = {"success": 0, "failed": 0}
-        by_day[day][row["status"]] += 1
+        hour = row["timestamp"][:13]
+        if hour not in by_hour:
+            by_hour[hour] = {"success": 0, "failed": 0}
+        by_hour[hour][row["status"]] += 1
 
     last_50 = rows[-50:]
 
@@ -224,7 +224,7 @@ def api_stats():
                 "success_rate": success_rate,
                 "avg_latency_ms": avg_latency,
             },
-            "daily": by_day,
+            "hourly": by_hour,
             "recent": last_50,
         }
     )

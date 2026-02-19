@@ -86,7 +86,7 @@
         <canvas id="pieChart"></canvas>
       </div>
       <div class="panel">
-        <h2>按日期成功与失败</h2>
+        <h2>按小时成功与失败</h2>
         <canvas id="dailyChart"></canvas>
       </div>
       <div class="panel">
@@ -125,13 +125,13 @@
         }
       });
 
-      const days = Object.keys(data.daily).sort();
-      const successList = days.map(d => data.daily[d].success || 0);
-      const failList = days.map(d => data.daily[d].failed || 0);
+      const hours = Object.keys(data.hourly).sort();
+      const successList = hours.map(h => data.hourly[h].success || 0);
+      const failList = hours.map(h => data.hourly[h].failed || 0);
       drawChart('dailyChart', {
         type: 'line',
         data: {
-          labels: days,
+          labels: hours,
           datasets: [
             { label: '成功', data: successList, borderColor: '#059669', tension: 0.25 },
             { label: '失败', data: failList, borderColor: '#dc2626', tension: 0.25 }
