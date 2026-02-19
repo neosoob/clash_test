@@ -86,7 +86,7 @@
         <canvas id="pieChart"></canvas>
       </div>
       <div class="panel">
-        <h2>按小时成功与失败</h2>
+        <h2>按小时成功与失败（含连通率%）</h2>
         <canvas id="dailyChart"></canvas>
       </div>
     </section>
@@ -94,13 +94,40 @@
 
   <script>
     const chartInstances = {};
+    const rateLabelPlugin = {
+      id: 'rateLabelPlugin',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        const rateDatasetIndex = chart.data.datasets.findIndex(ds => ds.label === '连通率(%)');
+        if (rateDatasetIndex === -1) return;
+
+        const meta = chart.getDatasetMeta(rateDatasetIndex);
+        const values = chart.data.datasets[rateDatasetIndex].data;
+
+        ctx.save();
+        ctx.fillStyle = '#1e3a8a';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        meta.data.forEach((bar, i) => {
+          const value = values[i];
+          if (value === null || value === undefined) return;
+          ctx.fillText(`${value}%`, bar.x, bar.y - 4);
+        });
+        ctx.restore();
+      }
+    };
 
     function drawChart(id, config) {
       if (chartInstances[id]) {
         chartInstances[id].destroy();
       }
       const ctx = document.getElementById(id);
-      chartInstances[id] = new Chart(ctx, config);
+      chartInstances[id] = new Chart(ctx, {
+        ...config,
+        plugins: [...(config.plugins || []), rateLabelPlugin]
+      });
     }
 
     async function loadStats() {
@@ -124,16 +151,39 @@
       const hours = Object.keys(data.hourly).sort();
       const successList = hours.map(h => data.hourly[h].success || 0);
       const failList = hours.map(h => data.hourly[h].failed || 0);
+      const rateList = hours.map((_, i) => {
+        const total = successList[i] + failList[i];
+        return total > 0 ? Number(((successList[i] / total) * 100).toFixed(2)) : 0;
+      });
       drawChart('dailyChart', {
         type: 'line',
         data: {
           labels: hours,
           datasets: [
-            { label: '成功', data: successList, borderColor: '#059669', tension: 0.25 },
-            { label: '失败', data: failList, borderColor: '#dc2626', tension: 0.25 }
+            { label: '成功', data: successList, borderColor: '#059669', tension: 0.25, yAxisID: 'y' },
+            { label: '失败', data: failList, borderColor: '#dc2626', tension: 0.25, yAxisID: 'y' },
+            {
+              type: 'bar',
+              label: '连通率(%)',
+              data: rateList,
+              backgroundColor: 'rgba(37, 99, 235, 0.35)',
+              borderColor: '#2563eb',
+              borderWidth: 1,
+              yAxisID: 'y1'
+            }
           ]
         },
-        options: { scales: { y: { beginAtZero: true } } }
+        options: {
+          scales: {
+            y: { beginAtZero: true },
+            y1: {
+              position: 'right',
+              beginAtZero: true,
+              max: 100,
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
       });
     }
 
