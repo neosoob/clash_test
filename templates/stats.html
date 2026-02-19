@@ -86,7 +86,7 @@
         <canvas id="pieChart"></canvas>
       </div>
       <div class="panel">
-        <h2>按小时成功与失败（含连通率%）</h2>
+        <h2>按小时失败次数与连通率（%）</h2>
         <canvas id="dailyChart"></canvas>
       </div>
     </section>
@@ -94,28 +94,68 @@
 
   <script>
     const chartInstances = {};
-    const rateLabelPlugin = {
-      id: 'rateLabelPlugin',
+    const valueLabelPlugin = {
+      id: 'valueLabelPlugin',
       afterDatasetsDraw(chart) {
         const { ctx } = chart;
-        const rateDatasetIndex = chart.data.datasets.findIndex(ds => ds.label === '连通率(%)');
-        if (rateDatasetIndex === -1) return;
+        const chartId = chart.canvas.id;
 
-        const meta = chart.getDatasetMeta(rateDatasetIndex);
-        const values = chart.data.datasets[rateDatasetIndex].data;
+        if (chartId === 'pieChart') {
+          const ds = chart.data.datasets[0];
+          const total = (ds?.data || []).reduce((sum, n) => sum + Number(n || 0), 0);
+          if (!total) return;
 
-        ctx.save();
-        ctx.fillStyle = '#1e3a8a';
-        ctx.font = '12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
+          const meta = chart.getDatasetMeta(0);
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
 
-        meta.data.forEach((bar, i) => {
-          const value = values[i];
-          if (value === null || value === undefined) return;
-          ctx.fillText(`${value}%`, bar.x, bar.y - 4);
-        });
-        ctx.restore();
+          meta.data.forEach((arc, i) => {
+            const raw = Number(ds.data[i] || 0);
+            if (raw <= 0) return;
+            const pct = ((raw / total) * 100).toFixed(1) + '%';
+            const pos = arc.tooltipPosition();
+            ctx.fillText(pct, pos.x, pos.y);
+          });
+          ctx.restore();
+          return;
+        }
+
+        if (chartId === 'dailyChart') {
+          const failDatasetIndex = chart.data.datasets.findIndex(ds => ds.label === '失败次数');
+          const rateDatasetIndex = chart.data.datasets.findIndex(ds => ds.label === '连通率(%)');
+
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.font = '12px sans-serif';
+
+          if (failDatasetIndex !== -1) {
+            const metaFail = chart.getDatasetMeta(failDatasetIndex);
+            const failValues = chart.data.datasets[failDatasetIndex].data;
+            ctx.fillStyle = '#7f1d1d';
+            metaFail.data.forEach((bar, i) => {
+              const value = failValues[i];
+              if (value === null || value === undefined) return;
+              ctx.fillText(String(value), bar.x, bar.y - 4);
+            });
+          }
+
+          if (rateDatasetIndex !== -1) {
+            const metaRate = chart.getDatasetMeta(rateDatasetIndex);
+            const rateValues = chart.data.datasets[rateDatasetIndex].data;
+            ctx.fillStyle = '#1e3a8a';
+            metaRate.data.forEach((pt, i) => {
+              const value = rateValues[i];
+              if (value === null || value === undefined) return;
+              ctx.fillText(`${value}%`, pt.x, pt.y - 8);
+            });
+          }
+
+          ctx.restore();
+        }
       }
     };
 
@@ -126,7 +166,7 @@
       const ctx = document.getElementById(id);
       chartInstances[id] = new Chart(ctx, {
         ...config,
-        plugins: [...(config.plugins || []), rateLabelPlugin]
+        plugins: [...(config.plugins || []), valueLabelPlugin]
       });
     }
 
@@ -160,15 +200,23 @@
         data: {
           labels: hours,
           datasets: [
-            { label: '成功', data: successList, borderColor: '#059669', tension: 0.25, yAxisID: 'y' },
-            { label: '失败', data: failList, borderColor: '#dc2626', tension: 0.25, yAxisID: 'y' },
             {
               type: 'bar',
+              label: '失败次数',
+              data: failList,
+              backgroundColor: 'rgba(220, 38, 38, 0.45)',
+              borderColor: '#dc2626',
+              borderWidth: 1,
+              yAxisID: 'y'
+            },
+            {
+              type: 'line',
               label: '连通率(%)',
               data: rateList,
-              backgroundColor: 'rgba(37, 99, 235, 0.35)',
               borderColor: '#2563eb',
-              borderWidth: 1,
+              pointBackgroundColor: '#2563eb',
+              pointRadius: 3,
+              tension: 0.25,
               yAxisID: 'y1'
             }
           ]

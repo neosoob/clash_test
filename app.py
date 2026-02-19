@@ -42,6 +42,27 @@ def _auto_test_loop() -> None:
         append_log("auto", status, latency_ms, detail)
 
 
+def start_auto_testing(interval_seconds: int, run_initial_test: bool = True) -> bool:
+    global _auto_thread, _auto_interval_seconds
+
+    interval_seconds = max(MIN_AUTO_INTERVAL_SECONDS, int(interval_seconds))
+    with _auto_lock:
+        _auto_interval_seconds = interval_seconds
+        already_running = _auto_thread is not None and _auto_thread.is_alive()
+        if already_running:
+            return False
+
+        _auto_stop_event.clear()
+        _auto_thread = threading.Thread(target=_auto_test_loop, daemon=True)
+        _auto_thread.start()
+
+    if run_initial_test:
+        status, latency_ms, detail = run_connectivity_test()
+        append_log("auto", status, latency_ms, detail)
+
+    return True
+
+
 def append_log(mode: str, status: str, latency_ms: float | None, detail: str) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     latency_str = f"{latency_ms:.2f}" if latency_ms is not None else ""
@@ -129,8 +150,6 @@ def api_test_auto():
 
 @app.post("/api/auto/start")
 def api_auto_start():
-    global _auto_thread, _auto_interval_seconds
-
     payload = request.get_json(silent=True) or {}
     interval_seconds = payload.get("interval_seconds", DEFAULT_AUTO_INTERVAL_SECONDS)
     try:
@@ -138,34 +157,27 @@ def api_auto_start():
     except (TypeError, ValueError):
         interval_seconds = DEFAULT_AUTO_INTERVAL_SECONDS
 
-    with _auto_lock:
-        _auto_interval_seconds = interval_seconds
-        already_running = _auto_thread is not None and _auto_thread.is_alive()
-        if already_running:
-            return jsonify(
-                {
-                    "running": True,
-                    "interval_seconds": _auto_interval_seconds,
-                    "message": "auto test already running",
-                }
-            )
+    started = start_auto_testing(interval_seconds, run_initial_test=True)
+    if not started:
+        return jsonify(
+            {
+                "running": True,
+                "interval_seconds": _auto_interval_seconds,
+                "message": "auto test already running",
+            }
+        )
 
-        _auto_stop_event.clear()
-        _auto_thread = threading.Thread(target=_auto_test_loop, daemon=True)
-        _auto_thread.start()
-
-    status, latency_ms, detail = run_connectivity_test()
-    ts = append_log("auto", status, latency_ms, detail)
+    latest = parse_logs()[-1]
     return jsonify(
         {
             "running": True,
             "interval_seconds": _auto_interval_seconds,
             "last_result": {
-                "timestamp": ts,
-                "mode": "auto",
-                "status": status,
-                "latency_ms": round(latency_ms, 2) if latency_ms is not None else None,
-                "detail": detail,
+                "timestamp": latest["timestamp"],
+                "mode": latest["mode"],
+                "status": latest["status"],
+                "latency_ms": latest["latency_ms"],
+                "detail": latest["detail"],
             },
         }
     )
@@ -229,4 +241,7 @@ def api_stats():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    debug = True
+    if not debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        start_auto_testing(DEFAULT_AUTO_INTERVAL_SECONDS, run_initial_test=True)
+    app.run(host="0.0.0.0", port=port, debug=debug)
