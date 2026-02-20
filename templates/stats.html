@@ -130,7 +130,7 @@
 
     <section class="charts">
       <div class="panel">
-        <h2>最近24小时每小时失败次数与连通率</h2>
+        <h2>最近48小时每小时失败次数与连通率</h2>
         <div class="table-wrap">
           <table>
             <thead>
@@ -289,15 +289,12 @@
         }
       });
 
-      const hours = Object.keys(data.hourly).sort();
+      const hours = data.hourly_24.map(item => item.hour);
       const hoursDesc = [...hours].reverse();
-      const successList = hours.map(h => data.hourly[h].success || 0);
-      const failList = hours.map(h => data.hourly[h].failed || 0);
-      const failListDesc = hoursDesc.map(h => data.hourly[h].failed || 0);
-      const rateList = hours.map((_, i) => {
-        const total = successList[i] + failList[i];
-        return total > 0 ? Math.round((successList[i] / total) * 100) : 0;
-      });
+      const hourly24Map = Object.fromEntries(data.hourly_24.map(item => [item.hour, item]));
+      const failList = hours.map(h => Number(hourly24Map[h]?.failed || 0));
+      const failListDesc = hoursDesc.map(h => Number(hourly24Map[h]?.failed || 0));
+      const rateList = hours.map(h => Math.round(Number(hourly24Map[h]?.connectivity_rate || 0)));
       drawChart('failBarChart', {
         type: 'bar',
         data: {
@@ -307,10 +304,8 @@
               label: '失败次数',
               data: failListDesc,
               rateValues: hoursDesc.map(h => {
-                const ok = data.hourly[h]?.success || 0;
-                const fail = data.hourly[h]?.failed || 0;
-                const total = ok + fail;
-                return total > 0 ? Math.round((fail / total) * 100) : 0;
+                const rate = Number(hourly24Map[h]?.connectivity_rate || 0);
+                return Math.max(0, Math.min(100, Math.round(100 - rate)));
               }),
               backgroundColor: 'rgba(220, 38, 38, 0.45)',
               borderColor: '#dc2626',
@@ -352,11 +347,11 @@
       });
 
       const tbody = document.getElementById('hourly24Body');
-      const hourly24Desc = [...data.hourly_24].reverse();
+      const hourly48Desc = [...data.hourly_48].reverse();
       const now = new Date();
       const currentHourKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}`;
       const elapsedMinutes = Math.max(1, now.getMinutes());
-      const currentHourItem = hourly24Desc.find(item => String(item.hour) === currentHourKey);
+      const currentHourItem = hourly48Desc.find(item => String(item.hour) === currentHourKey);
       let predictedCurrentHourFailed = null;
       if (currentHourItem) {
         const currentFailed = Number(currentHourItem.failed || 0);
@@ -364,10 +359,10 @@
       }
       const maxFailed = Math.max(
         1,
-        ...hourly24Desc.map(item => Number(item.failed || 0)),
+        ...hourly48Desc.map(item => Number(item.failed || 0)),
         Number(predictedCurrentHourFailed || 0)
       );
-      tbody.innerHTML = hourly24Desc.map(item => {
+      tbody.innerHTML = hourly48Desc.map(item => {
         const hourOnly = `${String(item.hour).split(' ')[1] || item.hour}:00`;
         const failed = Number(item.failed || 0);
         const connectivityRate = Math.round(Number(item.connectivity_rate || 0));

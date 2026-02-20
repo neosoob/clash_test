@@ -235,11 +235,16 @@ def api_stats():
         by_hour[hour][row["status"]] += 1
 
     current_hour = datetime.now().replace(minute=0, second=0, microsecond=0)
-    window_start = current_hour - timedelta(hours=23)
+    window_start_24 = current_hour - timedelta(hours=23)
+    window_start_48 = current_hour - timedelta(hours=47)
     by_hour_24: dict[str, dict[str, int]] = {}
+    by_hour_48: dict[str, dict[str, int]] = {}
     for i in range(24):
-        hour_key = (window_start + timedelta(hours=i)).strftime("%Y-%m-%d %H")
+        hour_key = (window_start_24 + timedelta(hours=i)).strftime("%Y-%m-%d %H")
         by_hour_24[hour_key] = {"success": 0, "failed": 0}
+    for i in range(48):
+        hour_key = (window_start_48 + timedelta(hours=i)).strftime("%Y-%m-%d %H")
+        by_hour_48[hour_key] = {"success": 0, "failed": 0}
 
     for row in rows:
         try:
@@ -247,16 +252,31 @@ def api_stats():
         except ValueError:
             continue
         ts_hour = ts.replace(minute=0, second=0, microsecond=0)
-        if ts_hour < window_start or ts_hour > current_hour:
+        if ts_hour > current_hour:
             continue
         hour_key = ts_hour.strftime("%Y-%m-%d %H")
-        by_hour_24[hour_key][row["status"]] += 1
+        if ts_hour >= window_start_24 and hour_key in by_hour_24:
+            by_hour_24[hour_key][row["status"]] += 1
+        if ts_hour >= window_start_48 and hour_key in by_hour_48:
+            by_hour_48[hour_key][row["status"]] += 1
 
     hourly_24: list[dict] = []
     for hour_key, counts in by_hour_24.items():
         hour_total = counts["success"] + counts["failed"]
         rate = round((counts["success"] / hour_total) * 100, 2) if hour_total else 0.0
         hourly_24.append(
+            {
+                "hour": hour_key,
+                "failed": counts["failed"],
+                "connectivity_rate": rate,
+            }
+        )
+
+    hourly_48: list[dict] = []
+    for hour_key, counts in by_hour_48.items():
+        hour_total = counts["success"] + counts["failed"]
+        rate = round((counts["success"] / hour_total) * 100, 2) if hour_total else 0.0
+        hourly_48.append(
             {
                 "hour": hour_key,
                 "failed": counts["failed"],
@@ -278,6 +298,7 @@ def api_stats():
             },
             "hourly": by_hour,
             "hourly_24": hourly_24,
+            "hourly_48": hourly_48,
         }
     )
 
