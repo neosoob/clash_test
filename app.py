@@ -217,6 +217,9 @@ def api_stats():
 
     latency_values = [r["latency_ms"] for r in rows if isinstance(r["latency_ms"], float)]
     avg_latency = round(mean(latency_values), 2) if latency_values else None
+    last_test_time = rows[-1]["timestamp"].split(" ")[1] if rows else "-"
+    failed_rows = [r for r in rows if r["status"] == "failed"]
+    last_failed_time = failed_rows[-1]["timestamp"].split(" ")[1] if failed_rows else "-"
 
     by_hour: dict[str, dict[str, int]] = {}
     for row in rows:
@@ -263,6 +266,8 @@ def api_stats():
                 "failed": failed,
                 "success_rate": success_rate,
                 "avg_latency_ms": avg_latency,
+                "last_test_time": last_test_time,
+                "last_failed_time": last_failed_time,
             },
             "hourly": by_hour,
             "hourly_24": hourly_24,

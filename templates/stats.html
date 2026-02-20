@@ -33,9 +33,19 @@
       border-radius: 12px;
       padding: 12px;
       box-shadow: 0 8px 24px rgba(2, 6, 23, .08);
+      border: 1px solid transparent;
     }
     .stat h3 { margin: 0; font-size: 13px; color: var(--muted); }
     .stat p { margin: 8px 0 0; font-size: 22px; font-weight: 700; }
+    .stat .sub { margin-top: 6px; font-size: 12px; color: var(--muted); }
+    .stat.status-green {
+      background: #ecfdf5;
+      border-color: #10b981;
+    }
+    .stat.status-red {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
     .charts {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -105,9 +115,9 @@
     </div>
 
     <section class="row">
-      <div class="stat"><h3>总测试次数</h3><p id="total">0</p></div>
+      <div id="totalStatCard" class="stat"><h3>总测试次数</h3><p id="total">0</p><div id="lastTestTime" class="sub">最近测试时间: -</div></div>
       <div class="stat"><h3>成功次数</h3><p id="success">0</p></div>
-      <div class="stat"><h3>失败次数</h3><p id="failed">0</p></div>
+      <div id="failedStatCard" class="stat"><h3>失败次数</h3><p id="failed">0</p><div id="lastFailedTime" class="sub">最近失败时间: -</div></div>
       <div class="stat"><h3>成功率 / 平均延迟</h3><p id="rate">0% / -</p></div>
     </section>
 
@@ -249,6 +259,19 @@
       document.getElementById('success').textContent = s.success;
       document.getElementById('failed').textContent = s.failed;
       document.getElementById('rate').textContent = `${s.success_rate}% / ${s.avg_latency_ms ?? '-'} ms`;
+      document.getElementById('lastTestTime').textContent = `最近测试时间: ${s.last_test_time ?? '-'}`;
+      document.getElementById('lastFailedTime').textContent = `最近失败时间: ${s.last_failed_time ?? '-'}`;
+      const totalCard = document.getElementById('totalStatCard');
+      const failedCard = document.getElementById('failedStatCard');
+      totalCard.classList.remove('status-red', 'status-green');
+      failedCard.classList.remove('status-red', 'status-green');
+      if ((s.last_test_time ?? '-') !== '-' && s.last_test_time === s.last_failed_time) {
+        totalCard.classList.add('status-red');
+        failedCard.classList.add('status-red');
+      } else {
+        totalCard.classList.add('status-green');
+        failedCard.classList.add('status-green');
+      }
 
       drawChart('pieChart', {
         type: 'pie',
