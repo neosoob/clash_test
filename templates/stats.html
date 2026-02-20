@@ -38,6 +38,9 @@
     .stat h3 { margin: 0; font-size: 13px; color: var(--muted); }
     .stat p { margin: 8px 0 0; font-size: 22px; font-weight: 700; }
     .stat .sub { margin-top: 6px; font-size: 12px; color: var(--muted); }
+    .icon-wrap { display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: middle; }
+    .icon-ok { color: #16a34a; font-weight: 700; }
+    .icon-fail { color: #dc2626; font-weight: 700; }
     .stat.status-green {
       background: #ecfdf5;
       border-color: #10b981;
@@ -268,7 +271,11 @@
       document.getElementById('rate').textContent = `${s.success_rate}% / ${s.avg_latency_ms ?? '-'} ms`;
       document.getElementById('lastTestTime').textContent = `最近测试时间: ${s.last_test_time ?? '-'}`;
       document.getElementById('lastFailedTime').textContent = `最近失败时间: ${s.last_failed_time ?? '-'}`;
-      document.getElementById('consecutiveFailedCount').textContent = `连续失败次数: ${s.consecutive_failed_count ?? 0}`;
+      const consecutiveFailed = Number(s.consecutive_failed_count ?? 0);
+      const iconsHtml = consecutiveFailed === 0
+        ? '<span class="icon-wrap"><span class="icon-ok">✓</span></span>'
+        : `<span class="icon-wrap">${'✗'.repeat(consecutiveFailed).split('').map(ch => `<span class="icon-fail">${ch}</span>`).join('')}</span>`;
+      document.getElementById('consecutiveFailedCount').innerHTML = `连续失败次数: ${consecutiveFailed}${iconsHtml}`;
       const totalCard = document.getElementById('totalStatCard');
       const failedCard = document.getElementById('failedStatCard');
       totalCard.classList.remove('status-red', 'status-green');
