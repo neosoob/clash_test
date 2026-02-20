@@ -220,6 +220,12 @@ def api_stats():
     last_test_time = rows[-1]["timestamp"].split(" ")[1] if rows else "-"
     failed_rows = [r for r in rows if r["status"] == "failed"]
     last_failed_time = failed_rows[-1]["timestamp"].split(" ")[1] if failed_rows else "-"
+    consecutive_failed_count = 0
+    for row in reversed(rows):
+        if row["status"] == "failed":
+            consecutive_failed_count += 1
+        else:
+            break
 
     by_hour: dict[str, dict[str, int]] = {}
     for row in rows:
@@ -268,6 +274,7 @@ def api_stats():
                 "avg_latency_ms": avg_latency,
                 "last_test_time": last_test_time,
                 "last_failed_time": last_failed_time,
+                "consecutive_failed_count": consecutive_failed_count,
             },
             "hourly": by_hour,
             "hourly_24": hourly_24,
