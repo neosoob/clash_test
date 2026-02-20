@@ -369,7 +369,7 @@
       tbody.innerHTML = hourly24Desc.map(item => {
         const hourOnly = `${String(item.hour).split(' ')[1] || item.hour}:00`;
         const failed = Number(item.failed || 0);
-        const connectivityRate = Number(item.connectivity_rate || 0);
+        const connectivityRate = Math.round(Number(item.connectivity_rate || 0));
         const failedBarWidth = Math.round((failed / maxFailed) * 100);
         const rateBarWidth = Math.max(0, Math.min(100, Math.round(connectivityRate)));
         const isCurrentHour = String(item.hour) === currentHourKey;
