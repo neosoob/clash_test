@@ -136,7 +136,7 @@
             <thead>
               <tr>
                 <th>小时</th>
-                <th>失败次数</th>
+                <th>次数</th>
                 <th>失败次数条形</th>
                 <th>连通率</th>
                 <th>连通率条形</th>
@@ -377,12 +377,13 @@
         const predictedHourFailed = isCurrentHour
           ? Math.max(failed, Number(predictedCurrentHourFailed || failed))
           : failed;
+        const failedDisplay = isCurrentHour ? `${failed}/${predictedHourFailed}` : String(failed);
         const predictedBarWidth = Math.round((predictedHourFailed / maxFailed) * 100);
         const predictedExtraWidth = Math.max(0, predictedBarWidth - failedBarWidth);
         return `
         <tr>
           <td>${hourOnly}</td>
-          <td>${failed}</td>
+          <td>${failedDisplay}</td>
           <td>
             <div class="bar-track">
               <div class="bar-fill fail" style="width:${failedBarWidth}%"></div>
