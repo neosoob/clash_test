@@ -53,6 +53,16 @@
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
     th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
+    .bar-track {
+      width: 120px;
+      height: 10px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar-fill { height: 100%; border-radius: 999px; }
+    .bar-fill.fail { background: #ef4444; }
+    .bar-fill.rate { background: #2563eb; }
     .log-box {
       width: 100%;
       min-height: 260px;
@@ -122,7 +132,9 @@
               <tr>
                 <th>小时</th>
                 <th>失败次数</th>
+                <th>失败次数条形</th>
                 <th>连通率</th>
+                <th>连通率条形</th>
               </tr>
             </thead>
             <tbody id="hourly24Body"></tbody>
@@ -309,13 +321,27 @@
       });
 
       const tbody = document.getElementById('hourly24Body');
-      tbody.innerHTML = [...data.hourly_24].reverse().map(item => `
+      const hourly24Desc = [...data.hourly_24].reverse();
+      const maxFailed = Math.max(1, ...hourly24Desc.map(item => Number(item.failed || 0)));
+      tbody.innerHTML = hourly24Desc.map(item => {
+        const failed = Number(item.failed || 0);
+        const connectivityRate = Number(item.connectivity_rate || 0);
+        const failedBarWidth = Math.round((failed / maxFailed) * 100);
+        const rateBarWidth = Math.max(0, Math.min(100, Math.round(connectivityRate)));
+        return `
         <tr>
           <td>${item.hour}:00</td>
-          <td>${item.failed}</td>
-          <td>${item.connectivity_rate}%</td>
+          <td>${failed}</td>
+          <td>
+            <div class="bar-track"><div class="bar-fill fail" style="width:${failedBarWidth}%"></div></div>
+          </td>
+          <td>${connectivityRate}%</td>
+          <td>
+            <div class="bar-track"><div class="bar-fill rate" style="width:${rateBarWidth}%"></div></div>
+          </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
 
       const logBox = document.getElementById('logContent');
       const filteredLog = (logData.content || '')
