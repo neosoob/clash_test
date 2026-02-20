@@ -49,7 +49,7 @@
       min-height: 280px;
     }
     .panel h2 { margin: 0 0 8px; font-size: 15px; }
-    .table-wrap { max-height: 300px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+    .table-wrap { border: 1px solid #e2e8f0; border-radius: 8px; overflow: visible; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
     th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
@@ -113,18 +113,6 @@
 
     <section class="charts">
       <div class="panel">
-        <h2>成功/失败占比</h2>
-        <canvas id="pieChart"></canvas>
-      </div>
-      <div class="panel">
-        <h2>按小时失败次数（柱状图）</h2>
-        <canvas id="failBarChart"></canvas>
-      </div>
-      <div class="panel">
-        <h2>按小时连通率（折线图）</h2>
-        <canvas id="rateLineChart"></canvas>
-      </div>
-      <div class="panel">
         <h2>最近24小时每小时失败次数与连通率</h2>
         <div class="table-wrap">
           <table>
@@ -140,6 +128,18 @@
             <tbody id="hourly24Body"></tbody>
           </table>
         </div>
+      </div>
+      <div class="panel">
+        <h2>成功/失败占比</h2>
+        <canvas id="pieChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>按小时失败次数（柱状图）</h2>
+        <canvas id="failBarChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>按小时连通率（折线图）</h2>
+        <canvas id="rateLineChart"></canvas>
       </div>
       <div class="panel span-2">
         <h2>connectivity_log.txt 内容</h2>
@@ -324,13 +324,14 @@
       const hourly24Desc = [...data.hourly_24].reverse();
       const maxFailed = Math.max(1, ...hourly24Desc.map(item => Number(item.failed || 0)));
       tbody.innerHTML = hourly24Desc.map(item => {
+        const hourOnly = `${String(item.hour).split(' ')[1] || item.hour}:00`;
         const failed = Number(item.failed || 0);
         const connectivityRate = Number(item.connectivity_rate || 0);
         const failedBarWidth = Math.round((failed / maxFailed) * 100);
         const rateBarWidth = Math.max(0, Math.min(100, Math.round(connectivityRate)));
         return `
         <tr>
-          <td>${item.hour}:00</td>
+          <td>${hourOnly}</td>
           <td>${failed}</td>
           <td>
             <div class="bar-track"><div class="bar-fill fail" style="width:${failedBarWidth}%"></div></div>
