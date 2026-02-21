@@ -8,7 +8,7 @@ from pathlib import Path
 from statistics import mean
 
 import requests
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template
 
 app = Flask(__name__)
 
@@ -22,6 +22,10 @@ _auto_lock = threading.Lock()
 _auto_stop_event = threading.Event()
 _auto_thread: threading.Thread | None = None
 _auto_interval_seconds = DEFAULT_AUTO_INTERVAL_SECONDS
+
+
+def operation_disabled_response():
+    return jsonify({"error": "operation disabled in production mode"}), 403
 
 
 def run_connectivity_test() -> tuple[str, float | None, str]:
@@ -116,83 +120,22 @@ def index():
 
 @app.post("/api/test")
 def api_test():
-    status, latency_ms, detail = run_connectivity_test()
-    mode = "manual"
-    ts = append_log(mode, status, latency_ms, detail)
-
-    return jsonify(
-        {
-            "timestamp": ts,
-            "mode": mode,
-            "status": status,
-            "latency_ms": round(latency_ms, 2) if latency_ms is not None else None,
-            "detail": detail,
-        }
-    )
+    return operation_disabled_response()
 
 
 @app.post("/api/test/auto")
 def api_test_auto():
-    status, latency_ms, detail = run_connectivity_test()
-    mode = "auto"
-    ts = append_log(mode, status, latency_ms, detail)
-
-    return jsonify(
-        {
-            "timestamp": ts,
-            "mode": mode,
-            "status": status,
-            "latency_ms": round(latency_ms, 2) if latency_ms is not None else None,
-            "detail": detail,
-        }
-    )
+    return operation_disabled_response()
 
 
 @app.post("/api/auto/start")
 def api_auto_start():
-    payload = request.get_json(silent=True) or {}
-    interval_seconds = payload.get("interval_seconds", DEFAULT_AUTO_INTERVAL_SECONDS)
-    try:
-        interval_seconds = max(MIN_AUTO_INTERVAL_SECONDS, int(interval_seconds))
-    except (TypeError, ValueError):
-        interval_seconds = DEFAULT_AUTO_INTERVAL_SECONDS
-
-    started = start_auto_testing(interval_seconds, run_initial_test=True)
-    if not started:
-        return jsonify(
-            {
-                "running": True,
-                "interval_seconds": _auto_interval_seconds,
-                "message": "auto test already running",
-            }
-        )
-
-    latest = parse_logs()[-1]
-    return jsonify(
-        {
-            "running": True,
-            "interval_seconds": _auto_interval_seconds,
-            "last_result": {
-                "timestamp": latest["timestamp"],
-                "mode": latest["mode"],
-                "status": latest["status"],
-                "latency_ms": latest["latency_ms"],
-                "detail": latest["detail"],
-            },
-        }
-    )
+    return operation_disabled_response()
 
 
 @app.post("/api/auto/stop")
 def api_auto_stop():
-    global _auto_thread
-
-    with _auto_lock:
-        was_running = _auto_thread is not None and _auto_thread.is_alive()
-        _auto_stop_event.set()
-        _auto_thread = None
-
-    return jsonify({"running": False, "stopped": was_running})
+    return operation_disabled_response()
 
 
 @app.get("/api/auto/status")
@@ -322,7 +265,7 @@ def api_log():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 50003))
     debug = True
     if not debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         start_auto_testing(DEFAULT_AUTO_INTERVAL_SECONDS, run_initial_test=True)

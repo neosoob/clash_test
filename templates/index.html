@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>谷歌连通性测试</title>
+  <title>连通性监控（只读）</title>
   <style>
     :root {
       --bg: #f3f8ff;
@@ -36,17 +36,9 @@
     p { margin: 0 0 16px; color: var(--muted); }
     .controls {
       display: flex;
-      flex-wrap: wrap;
       gap: 12px;
       align-items: center;
       margin-bottom: 16px;
-    }
-    input {
-      border: 1px solid #d4d7dd;
-      border-radius: 10px;
-      padding: 10px 12px;
-      width: 170px;
-      font-size: 15px;
     }
     button {
       border: none;
@@ -57,128 +49,23 @@
       font-size: 14px;
       cursor: pointer;
     }
-    button.secondary { background: #334155; }
     button.link { background: #64748b; }
-    .result {
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 12px;
-      min-height: 120px;
-      background: #f8fafc;
-      overflow: auto;
-      font-family: Consolas, monospace;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-    .status {
-      font-size: 14px;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-    .ok { color: var(--ok); }
-    .fail { color: var(--fail); }
   </style>
 </head>
 <body>
   <main class="card">
-    <h1>谷歌连通性测试</h1>
-    <p>支持手动测试与自动定时测试，结果会写入本地 <code>connectivity_log.txt</code>。</p>
+    <h1>连通性监控（只读）</h1>
+    <p>当前已进入上线只读模式，所有测试和配置类操作接口均已禁用。</p>
 
     <section class="controls">
-      <button id="manualBtn">手动测试</button>
-      <input id="intervalInput" type="number" min="1" value="30" placeholder="间隔秒数" />
-      <button id="autoStartBtn">开始自动测试</button>
-      <button id="autoStopBtn" class="secondary">停止自动测试</button>
       <button id="statsBtn" class="link">查看统计页</button>
     </section>
-
-    <div id="autoStatus" class="status">自动测试状态：未知</div>
-    <section id="result" class="result">等待测试...</section>
   </main>
 
   <script>
-    const resultEl = document.getElementById('result');
-    const autoStatusEl = document.getElementById('autoStatus');
-    const intervalInput = document.getElementById('intervalInput');
-
-    function lineClass(status) {
-      return status === 'success' ? 'ok' : 'fail';
-    }
-
-    function appendLine(data) {
-      const latency = data.latency_ms === null ? '-' : `${data.latency_ms} ms`;
-      const html = `<div class="${lineClass(data.status)}">[${data.timestamp}] [${data.mode}] ${data.status} | latency=${latency} | ${data.detail}</div>`;
-      resultEl.innerHTML = html + resultEl.innerHTML;
-    }
-
-    async function sendTest(url) {
-      try {
-        const resp = await fetch(url, { method: 'POST' });
-        const data = await resp.json();
-        appendLine(data);
-      } catch (err) {
-        appendLine({
-          timestamp: new Date().toLocaleString(),
-          mode: 'client',
-          status: 'failed',
-          latency_ms: null,
-          detail: String(err)
-        });
-      }
-    }
-
-    async function refreshAutoStatus() {
-      try {
-        const resp = await fetch('/api/auto/status');
-        const data = await resp.json();
-        autoStatusEl.textContent = `自动测试状态：${data.running ? '运行中' : '已停止'}（间隔 ${data.interval_seconds} 秒）`;
-      } catch (_) {
-        autoStatusEl.textContent = '自动测试状态：获取失败';
-      }
-    }
-
-    document.getElementById('manualBtn').addEventListener('click', () => {
-      sendTest('/api/test');
-    });
-
-    document.getElementById('autoStartBtn').addEventListener('click', async () => {
-      const sec = Number(intervalInput.value);
-      if (!Number.isFinite(sec) || sec < 1) {
-        alert('请输入大于等于 1 的秒数');
-        return;
-      }
-      try {
-        const resp = await fetch('/api/auto/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ interval_seconds: sec })
-        });
-        const data = await resp.json();
-        if (data.last_result) {
-          appendLine(data.last_result);
-        }
-        await refreshAutoStatus();
-      } catch (err) {
-        appendLine({
-          timestamp: new Date().toLocaleString(),
-          mode: 'client',
-          status: 'failed',
-          latency_ms: null,
-          detail: String(err)
-        });
-      }
-    });
-
-    document.getElementById('autoStopBtn').addEventListener('click', async () => {
-      await fetch('/api/auto/stop', { method: 'POST' });
-      await refreshAutoStatus();
-    });
-
     document.getElementById('statsBtn').addEventListener('click', () => {
       window.location.href = '/stats';
     });
-
-    refreshAutoStatus();
   </script>
 </body>
 </html>
