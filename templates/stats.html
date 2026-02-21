@@ -38,9 +38,6 @@
     .stat h3 { margin: 0; font-size: 13px; color: var(--muted); }
     .stat p { margin: 8px 0 0; font-size: 22px; font-weight: 700; }
     .stat .sub { margin-top: 6px; font-size: 12px; color: var(--muted); }
-    .icon-wrap { display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: middle; }
-    .icon-ok { color: #16a34a; font-weight: 700; }
-    .icon-fail { color: #dc2626; font-weight: 700; }
     .stat.status-green {
       background: #ecfdf5;
       border-color: #10b981;
@@ -141,7 +138,7 @@
                 <th>小时</th>
                 <th>次数</th>
                 <th>失败次数条形</th>
-                <th>连通率</th>
+                <th>连通分钟数</th>
                 <th>连通率条形</th>
               </tr>
             </thead>
@@ -272,10 +269,7 @@
       document.getElementById('lastTestTime').textContent = `最近测试时间: ${s.last_test_time ?? '-'}`;
       document.getElementById('lastFailedTime').textContent = `最近失败时间: ${s.last_failed_time ?? '-'}`;
       const consecutiveFailedMinutes = Number(s.consecutive_failed_minutes ?? 0);
-      const iconsHtml = consecutiveFailedMinutes <= 0
-        ? '<span class="icon-wrap"><span class="icon-ok">✓</span></span>'
-        : '<span class="icon-wrap"><span class="icon-fail">✗</span></span>';
-      document.getElementById('consecutiveFailedCount').innerHTML = `连续失败时间: ${consecutiveFailedMinutes.toFixed(1)} 分钟${iconsHtml}`;
+      document.getElementById('consecutiveFailedCount').textContent = `连续失败时间: ${consecutiveFailedMinutes.toFixed(1)} 分钟`;
       const totalCard = document.getElementById('totalStatCard');
       const failedCard = document.getElementById('failedStatCard');
       totalCard.classList.remove('status-red', 'status-green');
@@ -373,6 +367,7 @@
         const hourOnly = `${String(item.hour).split(' ')[1] || item.hour}:00`;
         const failed = Number(item.failed || 0);
         const connectivityRate = Math.round(Number(item.connectivity_rate || 0));
+        const connectivityMinutes = (Number(item.connectivity_rate || 0) * 60 / 100).toFixed(1);
         const failedBarWidth = Math.round((failed / maxFailed) * 100);
         const rateBarWidth = Math.max(0, Math.min(100, Math.round(connectivityRate)));
         const isCurrentHour = String(item.hour) === currentHourKey;
@@ -394,7 +389,7 @@
                 : ''}
             </div>
           </td>
-          <td>${connectivityRate}%</td>
+          <td>${connectivityMinutes} 分钟</td>
           <td>
             <div class="bar-track"><div class="bar-fill rate" style="width:${rateBarWidth}%"></div></div>
           </td>
