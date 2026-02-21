@@ -253,6 +253,14 @@
       });
     }
 
+    function formatMinutesAgo(ts) {
+      if (!ts || ts === '-') return '-';
+      const parsed = new Date(String(ts).replace(' ', 'T'));
+      if (Number.isNaN(parsed.getTime())) return '-';
+      const diffMinutes = Math.max(0, (Date.now() - parsed.getTime()) / 60000);
+      return `${diffMinutes.toFixed(1)} 分钟前`;
+    }
+
     async function loadStats() {
       const [statsResp, logResp] = await Promise.all([
         fetch('/api/stats'),
@@ -266,7 +274,7 @@
       document.getElementById('success').textContent = s.success;
       document.getElementById('failed').textContent = s.failed;
       document.getElementById('rate').textContent = `${s.success_rate}% / ${s.avg_latency_ms ?? '-'} ms`;
-      document.getElementById('lastTestTime').textContent = `最近测试时间: ${s.last_test_time ?? '-'}`;
+      document.getElementById('lastTestTime').textContent = `最近测试时间: ${formatMinutesAgo(s.last_test_time)}`;
       const sustainedConnectivityEl = document.getElementById('sustainedConnectivity');
       if (s.last_test_status === 'success' && s.sustained_connectivity_minutes !== null && s.sustained_connectivity_minutes !== undefined) {
         sustainedConnectivityEl.style.display = 'block';
@@ -274,7 +282,7 @@
       } else {
         sustainedConnectivityEl.style.display = 'none';
       }
-      document.getElementById('lastFailedTime').textContent = `最近失败时间: ${s.last_failed_time ?? '-'}`;
+      document.getElementById('lastFailedTime').textContent = `最近失败时间: ${formatMinutesAgo(s.last_failed_time)}`;
       const consecutiveFailedMinutes = Number(s.consecutive_failed_minutes ?? 0);
       document.getElementById('consecutiveFailedCount').textContent = `连续失败时间: ${consecutiveFailedMinutes.toFixed(1)} 分钟`;
       const totalCard = document.getElementById('totalStatCard');

@@ -161,9 +161,9 @@ def api_stats():
     latency_values = [r["latency_ms"] for r in rows if isinstance(r["latency_ms"], float)]
     avg_latency = round(mean(latency_values), 2) if latency_values else None
     last_test_status = rows[-1]["status"] if rows else None
-    last_test_time = rows[-1]["timestamp"].split(" ")[1] if rows else "-"
+    last_test_time = rows[-1]["timestamp"] if rows else "-"
     failed_rows = [r for r in rows if r["status"] == "failed"]
-    last_failed_time = failed_rows[-1]["timestamp"].split(" ")[1] if failed_rows else "-"
+    last_failed_time = failed_rows[-1]["timestamp"] if failed_rows else "-"
     sustained_connectivity_minutes: float | None = None
     if rows and rows[-1]["status"] == "success" and failed_rows:
         try:
