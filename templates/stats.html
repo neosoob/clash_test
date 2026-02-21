@@ -137,9 +137,9 @@
               <tr>
                 <th>小时</th>
                 <th>次数</th>
-                <th>失败次数条形</th>
-                <th>连通分钟数</th>
-                <th>连通率条形</th>
+                <th>失败次数</th>
+                <th>时长</th>
+                <th>连通率</th>
               </tr>
             </thead>
             <tbody id="hourly24Body"></tbody>
@@ -389,7 +389,7 @@
                 : ''}
             </div>
           </td>
-          <td>${connectivityMinutes} 分钟</td>
+          <td>${connectivityMinutes}</td>
           <td>
             <div class="bar-track"><div class="bar-fill rate" style="width:${rateBarWidth}%"></div></div>
           </td>
