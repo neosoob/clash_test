@@ -220,12 +220,23 @@ def api_stats():
     last_test_time = rows[-1]["timestamp"].split(" ")[1] if rows else "-"
     failed_rows = [r for r in rows if r["status"] == "failed"]
     last_failed_time = failed_rows[-1]["timestamp"].split(" ")[1] if failed_rows else "-"
-    consecutive_failed_count = 0
-    for row in reversed(rows):
-        if row["status"] == "failed":
-            consecutive_failed_count += 1
-        else:
-            break
+    consecutive_failed_minutes = 0.0
+    if rows and rows[-1]["status"] == "failed":
+        streak_start: datetime | None = None
+        streak_end: datetime | None = None
+        for row in reversed(rows):
+            if row["status"] != "failed":
+                break
+            try:
+                row_ts = datetime.strptime(row["timestamp"], "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                continue
+            streak_start = row_ts
+            if streak_end is None:
+                streak_end = row_ts
+        if streak_start is not None and streak_end is not None:
+            duration_minutes = (streak_end - streak_start).total_seconds() / 60
+            consecutive_failed_minutes = round(max(0.0, duration_minutes), 1)
 
     by_hour: dict[str, dict[str, int]] = {}
     for row in rows:
@@ -294,7 +305,7 @@ def api_stats():
                 "avg_latency_ms": avg_latency,
                 "last_test_time": last_test_time,
                 "last_failed_time": last_failed_time,
-                "consecutive_failed_count": consecutive_failed_count,
+                "consecutive_failed_minutes": consecutive_failed_minutes,
             },
             "hourly": by_hour,
             "hourly_24": hourly_24,

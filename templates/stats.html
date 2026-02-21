@@ -127,7 +127,7 @@
     <section class="row">
       <div id="totalStatCard" class="stat"><h3>总测试次数</h3><p id="total">0</p><div id="lastTestTime" class="sub">最近测试时间: -</div></div>
       <div class="stat"><h3>成功次数</h3><p id="success">0</p></div>
-      <div id="failedStatCard" class="stat"><h3>失败次数</h3><p id="failed">0</p><div id="lastFailedTime" class="sub">最近失败时间: -</div><div id="consecutiveFailedCount" class="sub">连续失败次数: 0</div></div>
+      <div id="failedStatCard" class="stat"><h3>失败次数</h3><p id="failed">0</p><div id="lastFailedTime" class="sub">最近失败时间: -</div><div id="consecutiveFailedCount" class="sub">连续失败时间: 0.0 分钟</div></div>
       <div class="stat"><h3>成功率 / 平均延迟</h3><p id="rate">0% / -</p></div>
     </section>
 
@@ -271,11 +271,11 @@
       document.getElementById('rate').textContent = `${s.success_rate}% / ${s.avg_latency_ms ?? '-'} ms`;
       document.getElementById('lastTestTime').textContent = `最近测试时间: ${s.last_test_time ?? '-'}`;
       document.getElementById('lastFailedTime').textContent = `最近失败时间: ${s.last_failed_time ?? '-'}`;
-      const consecutiveFailed = Number(s.consecutive_failed_count ?? 0);
-      const iconsHtml = consecutiveFailed === 0
+      const consecutiveFailedMinutes = Number(s.consecutive_failed_minutes ?? 0);
+      const iconsHtml = consecutiveFailedMinutes <= 0
         ? '<span class="icon-wrap"><span class="icon-ok">✓</span></span>'
-        : `<span class="icon-wrap">${'✗'.repeat(consecutiveFailed).split('').map(ch => `<span class="icon-fail">${ch}</span>`).join('')}</span>`;
-      document.getElementById('consecutiveFailedCount').innerHTML = `连续失败次数: ${consecutiveFailed}${iconsHtml}`;
+        : '<span class="icon-wrap"><span class="icon-fail">✗</span></span>';
+      document.getElementById('consecutiveFailedCount').innerHTML = `连续失败时间: ${consecutiveFailedMinutes.toFixed(1)} 分钟${iconsHtml}`;
       const totalCard = document.getElementById('totalStatCard');
       const failedCard = document.getElementById('failedStatCard');
       totalCard.classList.remove('status-red', 'status-green');
