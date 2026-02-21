@@ -160,9 +160,20 @@ def api_stats():
 
     latency_values = [r["latency_ms"] for r in rows if isinstance(r["latency_ms"], float)]
     avg_latency = round(mean(latency_values), 2) if latency_values else None
+    last_test_status = rows[-1]["status"] if rows else None
     last_test_time = rows[-1]["timestamp"].split(" ")[1] if rows else "-"
     failed_rows = [r for r in rows if r["status"] == "failed"]
     last_failed_time = failed_rows[-1]["timestamp"].split(" ")[1] if failed_rows else "-"
+    sustained_connectivity_minutes: float | None = None
+    if rows and rows[-1]["status"] == "success" and failed_rows:
+        try:
+            last_test_dt = datetime.strptime(rows[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
+            last_failed_dt = datetime.strptime(failed_rows[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
+            sustained_connectivity_minutes = round(
+                max(0.0, (last_test_dt - last_failed_dt).total_seconds() / 60), 1
+            )
+        except ValueError:
+            sustained_connectivity_minutes = None
     consecutive_failed_minutes = 0.0
     if rows and rows[-1]["status"] == "failed":
         streak_start: datetime | None = None
@@ -246,8 +257,10 @@ def api_stats():
                 "failed": failed,
                 "success_rate": success_rate,
                 "avg_latency_ms": avg_latency,
+                "last_test_status": last_test_status,
                 "last_test_time": last_test_time,
                 "last_failed_time": last_failed_time,
+                "sustained_connectivity_minutes": sustained_connectivity_minutes,
                 "consecutive_failed_minutes": consecutive_failed_minutes,
             },
             "hourly": by_hour,

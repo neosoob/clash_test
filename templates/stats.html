@@ -122,7 +122,7 @@
     </div>
 
     <section class="row">
-      <div id="totalStatCard" class="stat"><h3>总测试次数</h3><p id="total">0</p><div id="lastTestTime" class="sub">最近测试时间: -</div></div>
+      <div id="totalStatCard" class="stat"><h3>总测试次数</h3><p id="total">0</p><div id="lastTestTime" class="sub">最近测试时间: -</div><div id="sustainedConnectivity" class="sub" style="display:none">持续正常运行: -</div></div>
       <div class="stat"><h3>成功次数</h3><p id="success">0</p></div>
       <div id="failedStatCard" class="stat"><h3>失败次数</h3><p id="failed">0</p><div id="lastFailedTime" class="sub">最近失败时间: -</div><div id="consecutiveFailedCount" class="sub">连续失败时间: 0.0 分钟</div></div>
       <div class="stat"><h3>成功率 / 平均延迟</h3><p id="rate">0% / -</p></div>
@@ -267,6 +267,13 @@
       document.getElementById('failed').textContent = s.failed;
       document.getElementById('rate').textContent = `${s.success_rate}% / ${s.avg_latency_ms ?? '-'} ms`;
       document.getElementById('lastTestTime').textContent = `最近测试时间: ${s.last_test_time ?? '-'}`;
+      const sustainedConnectivityEl = document.getElementById('sustainedConnectivity');
+      if (s.last_test_status === 'success' && s.sustained_connectivity_minutes !== null && s.sustained_connectivity_minutes !== undefined) {
+        sustainedConnectivityEl.style.display = 'block';
+        sustainedConnectivityEl.textContent = `持续正常运行: ${Number(s.sustained_connectivity_minutes).toFixed(1)} 分钟`;
+      } else {
+        sustainedConnectivityEl.style.display = 'none';
+      }
       document.getElementById('lastFailedTime').textContent = `最近失败时间: ${s.last_failed_time ?? '-'}`;
       const consecutiveFailedMinutes = Number(s.consecutive_failed_minutes ?? 0);
       document.getElementById('consecutiveFailedCount').textContent = `连续失败时间: ${consecutiveFailedMinutes.toFixed(1)} 分钟`;
