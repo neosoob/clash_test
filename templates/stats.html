@@ -261,6 +261,14 @@
       return `${diffMinutes.toFixed(1)} 分钟前`;
     }
 
+    function formatSecondsAgo(ts) {
+      if (!ts || ts === '-') return '-';
+      const parsed = new Date(String(ts).replace(' ', 'T'));
+      if (Number.isNaN(parsed.getTime())) return '-';
+      const diffSeconds = Math.max(0, Math.round((Date.now() - parsed.getTime()) / 1000));
+      return `${diffSeconds} 秒前`;
+    }
+
     async function loadStats() {
       const [statsResp, logResp] = await Promise.all([
         fetch('/api/stats'),
@@ -274,7 +282,7 @@
       document.getElementById('success').textContent = s.success;
       document.getElementById('failed').textContent = s.failed;
       document.getElementById('rate').textContent = `${s.success_rate}% / ${s.avg_latency_ms ?? '-'} ms`;
-      document.getElementById('lastTestTime').textContent = `最近测试: ${formatMinutesAgo(s.last_test_time)}`;
+      document.getElementById('lastTestTime').textContent = `最近测试: ${formatSecondsAgo(s.last_test_time)}`;
       const sustainedConnectivityEl = document.getElementById('sustainedConnectivity');
       if (s.last_test_status === 'success' && s.sustained_connectivity_minutes !== null && s.sustained_connectivity_minutes !== undefined) {
         sustainedConnectivityEl.style.display = 'block';
